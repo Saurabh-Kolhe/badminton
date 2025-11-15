@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Badminton Summary</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #datesList {
+      margin-top: 10px;
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Badminton Stats since 5th October 2025</h2>
+
+  <p><strong>Game Dates:</strong> <span id="dateCount">0</span></p>
+  <button id="viewDatesBtn" disabled>View All Dates</button>
+
+  <div id="datesList"></div>
+
+  <p><strong>Shuttle amount collected per game:</strong> Rs.<span id="amount"></span></p>
+  <p><strong>Total amount collected:</strong> Rs.<span id="total"></span></p>
+  <p><strong>Target amount:</strong> Rs.<span id="target"></span></p>
+
+  <script>
+    var settings = {
+      async: true,
+      crossDomain: true,
+      url: "https://badminton1-728f.restdb.io/rest/badminton-data",
+      method: "GET",
+      headers: {
+        "content-type": "application/json",
+        "x-apikey": "69133b1c7f34ed2ba4200e07",
+      }
+    };
+
+    $.ajax(settings)
+      .done(function(response) {
+        console.log("Response:", response);
+
+        // Assuming response is one object: {dates:[], amountPerGame}
+        var dates = response[0].Dates.split(",") || [];
+        var amount = response[0].ShuttleCostPerGame || 0;
+        var target = response[0].target || 0;
+
+        // Fill values
+        $("#dateCount").text(dates.length);
+        $("#amount").text(amount);
+        $("#total").text(amount*dates.length);
+        $("#target").text(target);
+
+        // Enable button only if dates exist
+        if (dates.length > 0) {
+          $("#viewDatesBtn").prop("disabled", false);
+        }
+
+        // Build list of dates
+        let listHTML = "<ul>";
+        dates.forEach(date => {
+          listHTML += `<li>${date}</li>`;
+        });
+        listHTML += "</ul>";
+
+        $("#datesList").html(listHTML);
+      })
+      .fail(function() {
+        alert("Error fetching data.");
+      });
+
+    // Toggle View Dates
+    $("#viewDatesBtn").click(function() {
+      $("#datesList").toggle();
+      $(this).text(
+        $("#datesList").is(":visible") ? "Hide Dates" : "View All Dates"
+      );
+    });
+  </script>
+
+</body>
+</html>
