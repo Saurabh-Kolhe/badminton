@@ -11,6 +11,12 @@
       font-family: Arial, sans-serif;
       padding: 20px;
     }
+
+    /* Hide ALL content except heading */
+    #content {
+      display: none;
+    }
+
     #datesList {
       margin-top: 10px;
       background: #f4f4f4;
@@ -18,22 +24,50 @@
       border-radius: 5px;
       display: none;
     }
+
+    .loader {
+      border: 6px solid #eee;
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
 
   <h2>Badminton Stats since 5th October 2025</h2>
 
-  <p><strong>Game Dates:</strong> <span id="dateCount">0</span></p>
-  <button id="viewDatesBtn" disabled>View All Dates</button>
+  <!-- Spinner -->
+  <div id="loader" class="loader"></div>
 
-  <div id="datesList"></div>
+  <!-- All other content hidden initially -->
+  <div id="content">
 
-  <p><strong>Shuttle amount collected per game:</strong> Rs.<span id="amount"></span></p>
-  <p><strong>Total amount collected:</strong> Rs.<span id="total"></span></p>
-  <p><strong>Target amount:</strong> Rs.<span id="target"></span></p>
+    <p><strong>Game Dates:</strong> <span id="dateCount">0</span></p>
+    <button id="viewDatesBtn" disabled>View All Dates</button>
+
+    <div id="datesList"></div>
+
+    <p><strong>Shuttle amount collected per game:</strong> Rs.<span id="amount"></span></p>
+    <p><strong>Total amount collected:</strong> Rs.<span id="total"></span></p>
+    <p><strong>Target amount:</strong> Rs.<span id="target"></span></p>
+
+  </div>
 
   <script>
+
+    // Show loader initially
+    $("#loader").show();
+    $("#content").hide();
+
     var settings = {
       async: true,
       crossDomain: true,
@@ -47,25 +81,23 @@
 
     $.ajax(settings)
       .done(function(response) {
-        console.log("Response:", response);
 
-        // Assuming response is one object: {dates:[], amountPerGame}
+        $("#loader").hide();     // Hide spinner
+        $("#content").show();    // Show content
+
         var dates = response[0].Dates.split(",") || [];
         var amount = response[0].ShuttleCostPerGame || 0;
-        var target = response[0].target || 0;
+        var target = response[0].TargetAmount || 0;
 
-        // Fill values
         $("#dateCount").text(dates.length);
         $("#amount").text(amount);
-        $("#total").text(amount*dates.length);
+        $("#total").text(amount * dates.length);
         $("#target").text(target);
 
-        // Enable button only if dates exist
         if (dates.length > 0) {
           $("#viewDatesBtn").prop("disabled", false);
         }
 
-        // Build list of dates
         let listHTML = "<ul>";
         dates.forEach(date => {
           listHTML += `<li>${date}</li>`;
@@ -75,10 +107,10 @@
         $("#datesList").html(listHTML);
       })
       .fail(function() {
+        $("#loader").hide();
         alert("Error fetching data.");
       });
 
-    // Toggle View Dates
     $("#viewDatesBtn").click(function() {
       $("#datesList").toggle();
       $(this).text(
