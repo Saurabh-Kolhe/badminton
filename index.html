@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -36,11 +37,17 @@
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
+
 <body>
 
   <h2>Badminton Stats since 5th October 2025</h2>
@@ -50,6 +57,11 @@
 
   <!-- All other content hidden initially -->
   <div id="content">
+
+    <div style="margin-bottom: 20px;">
+      <input type="date" id="newDate" />
+      <button id="addDateBtn">Add Date</button>
+    </div>
 
     <p><strong>Game Dates:</strong> <span id="dateCount">0</span></p>
     <button id="viewDatesBtn" disabled>View All Dates</button>
@@ -79,19 +91,23 @@
       }
     };
 
+    var dates = [],
+      recordId,
+      shuttleCostPerGame = 0;
     $.ajax(settings)
-      .done(function(response) {
+      .done(function (response) {
 
         $("#loader").hide();     // Hide spinner
         $("#content").show();    // Show content
 
-        var dates = response[0].Dates.split(",") || [];
-        var amount = response[0].ShuttleCostPerGame || 0;
+        dates = response[0].Dates.split(",") || [];
+        shuttleCostPerGame = response[0].ShuttleCostPerGame || 0;
         var target = response[0].TargetAmount || 0;
+        recordId = response[0]._id;
 
         $("#dateCount").text(dates.length);
-        $("#amount").text(amount);
-        $("#total").text(amount * dates.length);
+        $("#amount").text(shuttleCostPerGame);
+        $("#total").text(shuttleCostPerGame * dates.length);
         $("#target").text(target);
 
         if (dates.length > 0) {
@@ -105,19 +121,119 @@
         listHTML += "</ul>";
 
         $("#datesList").html(listHTML);
+        validateDuplicateDate();
       })
-      .fail(function() {
+      .fail(function () {
         $("#loader").hide();
         alert("Error fetching data.");
       });
 
-    $("#viewDatesBtn").click(function() {
+    $("#viewDatesBtn").click(function () {
       $("#datesList").toggle();
       $(this).text(
         $("#datesList").is(":visible") ? "Hide Dates" : "View All Dates"
       );
     });
+
+    $("#newDate").on("change", function () {
+      validateDuplicateDate();
+    });
+    $("#addDateBtn").click(function () {
+      addDate();
+    });
+
+    $(document).ready(function () {
+      $("#newDate").val(getToday());
+    });
+    function getToday() {
+      const today = new Date();
+      return today.toISOString().split("T")[0]; // yyyy-mm-dd
+    }
+
+    function validateDuplicateDate() {
+      const selectedDate = $("#newDate").val();
+      if (!selectedDate) return;
+
+      // Convert to dd-mm-yyyy
+      const [year, month, day] = selectedDate.split("-");
+      const formattedDate = `${day}-${month}-${year}`;
+
+      if (dates.includes(formattedDate)) {
+        $("#addDateBtn").prop("disabled", true).text("Date Already Exists");
+        return 0;
+      } else {
+        $("#addDateBtn").prop("disabled", false).text("Add Date");
+        return 1;
+      }
+    }
+
+    function addDate() {
+      // Ask for PIN
+      const pin = prompt("Enter 4-digit PIN to add data:");
+
+      // Validate PIN
+      if (pin === null) return; // user pressed cancel
+      if (pin !== "12345") {
+        alert("Incorrect PIN. Access denied.");
+        return;
+      }
+      const selectedDate = $("#newDate").val(); // yyyy-mm-dd
+
+      if (!(selectedDate && validateDuplicateDate())) {
+        alert("Please select a date.");
+        return;
+      }
+
+      // Convert yyyy-mm-dd → dd-mm-yyyy
+      const [year, month, day] = selectedDate.split("-");
+      const formattedDate = `${day}-${month}-${year}`;
+
+      // Disable while adding
+      $("#addDateBtn").prop("disabled", true).text("Adding...");
+
+      // Append new date
+      dates.push(formattedDate);
+
+      const updatedData = {
+        Dates: dates.join(",")
+      };
+
+      $.ajax({
+        async: true,
+        crossDomain: true,
+        url: "https://badminton1-728f.restdb.io/rest/badminton-data/" + recordId,
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          "x-apikey": "69133b1c7f34ed2ba4200e07",
+        },
+        data: JSON.stringify(updatedData)
+      })
+        .done(function () {
+          alert("Date added!");
+
+          // Update in-memory list
+          existingDates = dates;
+
+          // Update UI
+          $("#datesList").append(`<li>${formattedDate}</li>`);
+          $("#dateCount").text(dates.length);
+
+          // Recalculate total amount
+          $("#total").text(dates.length * shuttleCostPerGame);
+
+          // Reset button
+          $("#addDateBtn").prop("disabled", false).text("Add Date");
+        })
+        .fail(function () {
+          alert("Error updating record.");
+          $("#addDateBtn").prop("disabled", false).text("Add Date");
+        });
+
+    }
+
   </script>
 
 </body>
+
 </html>
