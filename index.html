@@ -67,7 +67,7 @@
     <button id="viewDatesBtn" disabled>View All Dates</button>
 
     <div id="datesList"></div>
-
+    <p><strong>28-12-2025 -----> only 1hr played ----->amount collected 36rs</strong></p>
     <p><strong>Shuttle amount collected per game:</strong> Rs.<span id="amount"></span></p>
     <p><strong>Total amount collected:</strong> Rs.<span id="total"></span></p>
     <p><strong>Target amount:</strong> Rs.<span id="target"></span></p>
@@ -107,7 +107,7 @@
 
         $("#dateCount").text(dates.length);
         $("#amount").text(shuttleCostPerGame);
-        $("#total").text(shuttleCostPerGame * dates.length);
+        $("#total").text((shuttleCostPerGame * dates.length)+36);
         $("#target").text(target);
 
         if (dates.length > 0) {
