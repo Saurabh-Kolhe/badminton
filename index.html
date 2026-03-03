@@ -214,6 +214,9 @@
       <p class="special-note">
         ✨ 28-12-2025: 1hr session (+₹36 collected)
       </p>
+      <p class="special-note">
+        ✨ 01-03-2026: 1hr session (+₹36 collected)
+      </p>
     </div>
   </div>
 
@@ -243,7 +246,7 @@
     });
 
     function updateUI() {
-      const extraAmount = 36;
+      const extraAmount = 72;
       const totalCollected = (shuttleCostPerGame * dates.length) + extraAmount;
       const progressPercent = targetAmount > 0 ? Math.min((totalCollected / targetAmount) * 100, 100) : 0;
       
