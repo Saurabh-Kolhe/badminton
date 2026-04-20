@@ -1,526 +1,580 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Badminton Tracker</title>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --primary: #2563eb;
-      --success: #10b981;
-      --danger: #ef4444;
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --text: #1e293b;
-    }
-
-    body {
-      font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-    }
-
-    .container {
-      max-width: 500px;
-      width: 100%;
-    }
-
-    h2 {
-      text-align: center;
-      color: var(--primary);
-      font-size: 1.5rem;
-      margin-bottom: 24px;
-    }
-
-    /* Stats Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .stat-card {
-      background: var(--card);
-      padding: 12px 5px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    .stat-card span {
-      display: block;
-      font-size: 0.75rem;
-      color: #64748b;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    .stat-card strong {
-      font-size: 1.1rem;
-      color: var(--text);
-    }
-
-    /* Progress Bar */
-    .progress-container {
-      background: var(--card);
-      padding: 16px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .progress-bar-bg {
-      background: #e2e8f0;
-      height: 10px;
-      border-radius: 5px;
-      margin-top: 8px;
-      overflow: hidden;
-    }
-
-    #progress-fill {
-      background: var(--success);
-      height: 100%;
-      width: 0%;
-      transition: width 0.5s ease;
-    }
-
-    /* Controls */
-    .controls {
-      background: var(--card);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-
-    /* Top row: date + duration side by side */
-    .top-row {
-      display: flex;
-      gap: 8px;
-      align-items: stretch;
-      margin-bottom: 10px;
-    }
-
-    input[type="date"] {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      box-sizing: border-box;
-      font-size: 0.95rem;
-      font-family: inherit;
-      min-width: 0;
-    }
-
-    /* Duration toggle */
-    .duration-toggle {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      flex-shrink: 0;
-    }
-
-    .duration-btn {
-      padding: 6px 12px;
-      border: 2px solid #cbd5e1;
-      border-radius: 6px;
-      background: white;
-      color: #64748b;
-      font-weight: 600;
-      font-size: 0.82rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-bottom: 0;
-      white-space: nowrap;
-    }
-
-    .duration-btn.active {
-      border-color: var(--primary);
-      background: var(--primary);
-      color: white;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      margin-bottom: 8px;
-    }
-
-    #addDateBtn { background: var(--primary); color: white; }
-    #viewDatesBtn { background: #64748b; color: white; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    /* History List */
-    #datesList {
-      margin-top: 15px;
-      max-height: 260px;
-      overflow-y: auto;
-      border-top: 1px solid #e2e8f0;
-      display: none;
-    }
-
-    ul { list-style: none; padding: 0; margin: 0; }
-    li {
-      padding: 9px 4px;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 0.88rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .li-index { font-size: 0.75rem; color: #94a3b8; font-weight: 600; min-width: 22px; }
-    .li-date { font-weight: 600; color: var(--text); min-width: 90px; flex: 1; }
-    .li-duration {
-      font-size: 0.78rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 20px;
-      flex-shrink: 0;
-    }
-    .li-duration.two-hr { background: #dbeafe; color: #1d4ed8; }
-    .li-duration.one-hr  { background: #fef3c7; color: #92400e; }
-    .li-cost { font-weight: 700; color: var(--success); flex-shrink: 0; margin-left: 8px; }
-
-    /* Target met note */
-    .target-met-note {
-      font-size: 0.82rem;
-      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-      color: #065f46;
-      padding: 12px 14px;
-      border-radius: 10px;
-      margin-top: 18px;
-      text-align: center;
-      font-weight: 600;
-      border: 1px solid #6ee7b7;
-      line-height: 1.5;
-    }
-
-    /* Loader */
-    .loader {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid var(--primary);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 40px auto;
-    }
-
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  </style>
-</head>
-
-<body>
-
-  <div class="container">
-    <h2>🏸 Badminton Stats</h2>
-
-    <div id="loader" class="loader"></div>
-
-    <div id="content" style="display: none;">
-      
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span>Total Hours</span>
-          <strong id="totalHours">0</strong>
-        </div>
-        <div class="stat-card">
-          <span>Per Hour</span>
-          <strong>₹36</strong>
-        </div>
-        <div class="stat-card">
-          <span>Surplus</span>
-          <strong id="surplusAmount">₹0</strong>
-        </div>
-      </div>
-
-      <div class="progress-container">
-        <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-          <span>Collected: <strong>₹<span id="total">0</span></strong></span>
-          <span>Target: <strong>₹<span id="target">0</span></strong></span>
-        </div>
-        <div class="progress-bar-bg">
-          <div id="progress-fill"></div>
-        </div>
-      </div>
-
-      <div class="controls">
-        <div class="top-row">
-          <input type="date" id="newDate" />
-          <div class="duration-toggle">
-            <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹72</button>
-            <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹36</button>
-          </div>
-        </div>
-
-        <button id="addDateBtn">Add Date</button>
-        <button id="viewDatesBtn" disabled>View History</button>
-        
-        <div id="datesList"></div>
-      </div>
-
-      <div id="targetMetNote"></div>
-
-      <!-- Debug panel -->
-      <div id="debugPanel" style="display:none; margin-top:16px; background:#1e293b; color:#94a3b8; font-family:monospace; font-size:0.75rem; padding:14px; border-radius:10px; white-space:pre-wrap; word-break:break-all;"></div>
-    </div>
-  </div>
-
-  <script>
-    /*
-     * DB SCHEMA (new):
-     * Collection: badminton-data
-     *   - Config row : { Type: "config", ShuttleCostPerGame: 72, TargetAmount: 1080 }
-     *   - Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
-     *
-     * The old single-row (CSV Dates) is no longer used for sessions.
-     */
-
-    // ─── State ───────────────────────────────────────────────────────────────
-    let sessions      = [];   // [{ _id, date: "dd-mm-yyyy", duration: "2hr"|"1hr", cost }]
-    let selectedDuration = '2hr';
-
-    const COST_2HR     = 72;
-    const COST_1HR     = 36;
-    const TARGET_AMOUNT = 1080;
-    const API_BASE = "https://badminton1-728f.restdb.io/rest/badminton-data";
-    const HEADERS  = { "x-apikey": "69133b1c7f34ed2ba4200e07", "content-type": "application/json" };
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
-    function parseDate(str) {
-      if (!str) return new Date(0);
-      if (str.includes('T')) return new Date(str);   // ISO
-      const [d, m, y] = str.split("-");              // dd-mm-yyyy
-      return new Date(+y, +m - 1, +d);
-    }
-
-    // Normalise any date value from RestDB to "dd-mm-yyyy"
-    // RestDB date fields return ISO strings like "2025-10-05T00:00:00.000Z"
-    function normaliseDate(str) {
-      if (!str) return null;
-      const dt = new Date(str);
-      if (isNaN(dt.getTime())) return null;
-      const d = String(dt.getUTCDate()).padStart(2, '0');
-      const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
-      const y = dt.getUTCFullYear();
-      return `${d}-${m}-${y}`;
-    }
-
-    function formatDisplay(str) {
-      // Handles both "dd-mm-yyyy" and ISO "yyyy-mm-ddT..." formats
-      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      if (!str) return str;
-      // ISO format from DB (e.g. "2025-10-12T00:00:00.000Z")
-      if (str.length > 10 && str.includes('T')) {
-        const dt = new Date(str);
-        const d  = String(dt.getUTCDate()).padStart(2, '0');
-        const m  = months[dt.getUTCMonth()];
-        const y  = dt.getUTCFullYear();
-        return `${d} ${m} ${y}`;
-      }
-      // "dd-mm-yyyy" format
-      const [d, m, y] = str.split("-");
-      return `${d} ${months[+m - 1]} ${y}`;
-    }
-
-    function costFor(duration) {
-      return duration === '2hr' ? COST_2HR : COST_1HR;
-    }
-
-    // ─── Fetch all rows ──────────────────────────────────────────────────────
-    $.ajax({
-      url: API_BASE,
-      method: "GET",
-      headers: HEADERS
-    }).done(function (rows) {
-      $("#loader").hide();
-      $("#content").fadeIn();
-
-      sessions = [];
-      rows.forEach(row => {
-        if (!row.Date) return;
-        const normDate = normaliseDate(row.Date);
-        if (!normDate) return;
-        sessions.push({
-          _id:      row._id,
-          date:     normDate,
-          duration: row.Duration || "2hr",
-          cost:     costFor(row.Duration || "2hr")
-        });
-      });
-
-      // Sort chronologically
-      sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
-
-      updateUI();
-    }).fail(function() {
-      alert("Failed to load data from DB.");
-    });
-
-    // ─── Duration toggle ─────────────────────────────────────────────────────
-    function setDuration(d) {
-      selectedDuration = d;
-      $("#btn2hr").toggleClass("active", d === '2hr');
-      $("#btn1hr").toggleClass("active", d === '1hr');
-      validateDuplicateDate();
-    }
-
-    // ─── UI Update ───────────────────────────────────────────────────────────
-    function updateUI() {
-      const totalCollected  = sessions.reduce((sum, s) => sum + s.cost, 0);
-      const totalHours      = sessions.reduce((sum, s) => sum + (s.duration === '2hr' ? 2 : 1), 0);
-      const progressPercent = TARGET_AMOUNT > 0 ? Math.min((totalCollected / TARGET_AMOUNT) * 100, 100) : 0;
-      const surplus         = totalCollected - TARGET_AMOUNT;
-
-      $("#totalHours").text(totalHours);
-      $("#total").text(totalCollected);
-      $("#target").text(TARGET_AMOUNT);
-      $("#progress-fill").css("width", progressPercent + "%");
-
-      const surplusEl = $("#surplusAmount");
-      if (surplus >= 0) {
-        surplusEl.text("+" + surplus).css("color", "var(--success)");
-      } else {
-        surplusEl.text(surplus).css("color", "var(--danger)");
-      }
-
-      $("#viewDatesBtn").prop("disabled", sessions.length === 0);
-
-      // ── History list ────────────────────────────────────────────────────
-      const listItems = sessions.map((s, i) => {
-        const durationClass = s.duration === '2hr' ? 'two-hr' : 'one-hr';
-        const durationLabel = s.duration === '2hr' ? '2 Hours' : '1 Hour';
-        return `<li>
-          <span class="li-index">#${i + 1}</span>
-          <span class="li-date">${formatDisplay(s.date)}</span>
-          <span class="li-duration ${durationClass}">${durationLabel}</span>
-          <span class="li-cost">₹${s.cost}</span>
-        </li>`;
-      }).join('');
-
-      $("#datesList").html(`<ul>${listItems.length ? listItems : '<li style="justify-content:center;color:#94a3b8;">No sessions yet</li>'}</ul>`);
-
-      // ── Target-met date ──────────────────────────────────────────────────
-      computeTargetMetDate();
-
-      validateDuplicateDate();
-    }
-
-    function computeTargetMetDate() {
-      if (!TARGET_AMOUNT || TARGET_AMOUNT <= 0) {
-        $("#targetMetNote").html(''); return;
-      }
-
-      let running = 0, metSession = null;
-      for (const s of sessions) {
-        running += s.cost;
-        if (running >= TARGET_AMOUNT) { metSession = s; break; }
-      }
-
-      if (metSession) {
-        $("#targetMetNote").html(`
-          <div class="target-met-note">
-            🎯 Target of ₹${TARGET_AMOUNT} was met on
-            <strong>${formatDisplay(metSession.date)}</strong>
-            &nbsp;(${metSession.duration === '2hr' ? '2-hour' : '1-hour'} session)
-          </div>`);
-      } else {
-        $("#targetMetNote").html('');
-      }
-    }
-
-    // ─── Add Date ────────────────────────────────────────────────────────────
-    $("#addDateBtn").click(function () {
-      const pin = prompt("Enter 4-digit PIN:");
-      if (pin !== "54321") return alert("Wrong PIN");
-
-      const selectedDate = $("#newDate").val();
-      if (!selectedDate) return alert("Select a date");
-
-      const [y, m, d] = selectedDate.split("-");
-      const formattedDate = `${d}-${m}-${y}`;       // dd-mm-yyyy for display/dedup
-      const isoDate       = `${y}-${m}-${d}`;        // yyyy-mm-dd for DB storage
-
-      if (sessions.some(s => s.date === formattedDate)) return;
-
-      const $btn = $(this).prop("disabled", true).text("Saving...");
-
-      const payload = { Date: isoDate, Duration: selectedDuration, id: Date.now() };
-
-      fetch(API_BASE, {
-        method: "POST",
-        headers: HEADERS,
-        body: JSON.stringify(payload)
-      })
-      .then(async res => {
-        const text = await res.text();
-        let parsed;
-        try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
-
-        debugEl.text("→ POST " + API_BASE + "\n" +
-          "Body sent: " + JSON.stringify(payload) + "\n\n" +
-          "← Status: " + res.status + " " + res.statusText + "\n" +
-          "Response: " + JSON.stringify(parsed, null, 2));
-
-        if (!res.ok) {
-          $btn.prop("disabled", false).text("Add Date");
-          return;
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Badminton Tracker</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+        --primary: #2563eb;
+        --success: #10b981;
+        --danger: #ef4444;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --text: #1e293b;
         }
 
-        sessions.push({
-          _id:      parsed._id,
-          date:     formattedDate,
-          duration: selectedDuration,
-          cost:     costFor(selectedDuration)
+        body {
+        font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        }
+
+        .container {
+        max-width: 500px;
+        width: 100%;
+        }
+
+        h2 {
+        text-align: center;
+        color: var(--primary);
+        font-size: 1.5rem;
+        margin-bottom: 24px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 20px;
+        }
+
+        .stat-card {
+        background: var(--card);
+        padding: 12px 5px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-align: center;
+        }
+
+        .stat-card span {
+        display: block;
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        font-weight: 600;
+        }
+
+        .stat-card strong {
+        font-size: 1.1rem;
+        color: var(--text);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+        background: var(--card);
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar-bg {
+        background: #e2e8f0;
+        height: 10px;
+        border-radius: 5px;
+        margin-top: 8px;
+        overflow: hidden;
+        }
+
+        #progress-fill {
+        background: var(--success);
+        height: 100%;
+        width: 0%;
+        transition: width 0.5s ease;
+        }
+
+        /* Controls */
+        .controls {
+        background: var(--card);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        /* Top row: date + duration side by side */
+        .top-row {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+        margin-bottom: 10px;
+        }
+
+        input[type="date"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        font-family: inherit;
+        min-width: 0;
+        }
+
+        /* Duration toggle */
+        .duration-toggle {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex-shrink: 0;
+        }
+
+        .duration-btn {
+        padding: 6px 12px;
+        border: 2px solid #cbd5e1;
+        border-radius: 6px;
+        background: white;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 0;
+        white-space: nowrap;
+        }
+
+        .duration-btn.active {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: white;
+        }
+
+        button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        margin-bottom: 8px;
+        }
+
+        #addDateBtn { background: var(--primary); color: white; }
+        #viewDatesBtn { background: #64748b; color: white; }
+        #viewOldDatesBtn { background: #94a3b8; color: white; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* History List */
+        #datesList, #oldDatesList {
+        margin-top: 15px;
+        max-height: 260px;
+        overflow-y: auto;
+        border-top: 1px solid #e2e8f0;
+        display: none;
+        }
+
+        ul { list-style: none; padding: 0; margin: 0; }
+        li {
+        padding: 9px 4px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.88rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
+        }
+
+        .li-index { font-size: 0.75rem; color: #94a3b8; font-weight: 600; min-width: 22px; }
+        .li-date { font-weight: 600; color: var(--text); min-width: 90px; flex: 1; }
+        .li-duration {
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 20px;
+        flex-shrink: 0;
+        }
+        .li-duration.two-hr { background: #dbeafe; color: #1d4ed8; }
+        .li-duration.one-hr  { background: #fef3c7; color: #92400e; }
+        .li-cost { font-weight: 700; color: var(--success); flex-shrink: 0; margin-left: 8px; }
+
+        /* Target met note */
+        .target-met-note {
+        font-size: 0.82rem;
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        color: #065f46;
+        padding: 12px 14px;
+        border-radius: 10px;
+        margin-top: 18px;
+        text-align: center;
+        font-weight: 600;
+        border: 1px solid #6ee7b7;
+        line-height: 1.5;
+        }
+
+        /* Loader */
+        .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 40px auto;
+        }
+
+        .special-note {
+        font-size: 0.75rem;
+        background: #fef3c7;
+        color: #92400e;
+        padding: 8px;
+        border-radius: 6px;
+        margin-top: 15px;
+        text-align: center;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    </head>
+
+    <body>
+
+    <div class="container">
+        <h2>🏸 Badminton Stats</h2>
+
+        <div id="loader" class="loader"></div>
+
+        <div id="content" style="display: none;">
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+            <span>Total Hours</span>
+            <strong id="totalHours">0</strong>
+            </div>
+            <div class="stat-card">
+            <span>Per Hour</span>
+            <strong>₹36</strong>
+            </div>
+            <div class="stat-card">
+            <span>Surplus</span>
+            <strong id="surplusAmount">₹0</strong>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+            <span>Collected: <strong>₹<span id="total">0</span></strong></span>
+            <span>Target: <strong>₹<span id="target">0</span></strong></span>
+            </div>
+            <div class="progress-bar-bg">
+            <div id="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="top-row">
+            <input type="date" id="newDate" />
+            <div class="duration-toggle">
+                <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹72</button>
+                <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹36</button>
+            </div>
+            </div>
+
+            <button id="addDateBtn">Add Date</button>
+            <button id="viewDatesBtn" disabled>View History</button>
+            <button id="viewOldDatesBtn" disabled>View Old History</button>
+
+            <div id="datesList"></div>
+            <div id="oldDatesList"></div>
+            <p class="special-note">
+            ✨ Previous target of Rs 1080 was met on 15-02-2026
+        </p>
+        </div>
+
+        <div id="targetMetNote"></div>
+
+        <!-- Debug panel -->
+        <div id="debugPanel" style="display:none; margin-top:16px; background:#1e293b; color:#94a3b8; font-family:monospace; font-size:0.75rem; padding:14px; border-radius:10px; white-space:pre-wrap; word-break:break-all;"></div>
+        </div>
+    </div>
+
+    <script>
+        /*
+        * DB SCHEMA (new):
+        * Collection: badminton-data
+        *   - Config row : { Type: "config", ShuttleCostPerGame: 72, TargetAmount: 1080 }
+        *   - Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
+        *
+        * The old single-row (CSV Dates) is no longer used for sessions.
+        */
+
+        // ─── State ───────────────────────────────────────────────────────────────
+        let sessions      = [];   // [{ _id, date: "dd-mm-yyyy", duration: "2hr"|"1hr", cost }]
+        let selectedDuration = '2hr';
+
+        const COST_2HR      = 72;
+        const COST_1HR      = 36;
+        const OLD_TARGET    = 1080;  // previously met target — sessions up to this split into old history
+        const TARGET_AMOUNT = 1180;  // new fresh target (full ₹1180 needed from scratch)
+        const API_BASE = "https://badminton1-728f.restdb.io/rest/badminton-data";
+        const HEADERS  = { "x-apikey": "69133b1c7f34ed2ba4200e07", "content-type": "application/json" };
+
+        // ─── Helpers ─────────────────────────────────────────────────────────────
+        function parseDate(str) {
+        if (!str) return new Date(0);
+        if (str.includes('T')) return new Date(str);   // ISO
+        const [d, m, y] = str.split("-");              // dd-mm-yyyy
+        return new Date(+y, +m - 1, +d);
+        }
+
+        // Normalise any date value from RestDB to "dd-mm-yyyy"
+        // RestDB date fields return ISO strings like "2025-10-05T00:00:00.000Z"
+        function normaliseDate(str) {
+        if (!str) return null;
+        const dt = new Date(str);
+        if (isNaN(dt.getTime())) return null;
+        const d = String(dt.getUTCDate()).padStart(2, '0');
+        const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+        const y = dt.getUTCFullYear();
+        return `${d}-${m}-${y}`;
+        }
+
+        function formatDisplay(str) {
+        // Handles both "dd-mm-yyyy" and ISO "yyyy-mm-ddT..." formats
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        if (!str) return str;
+        // ISO format from DB (e.g. "2025-10-12T00:00:00.000Z")
+        if (str.length > 10 && str.includes('T')) {
+            const dt = new Date(str);
+            const d  = String(dt.getUTCDate()).padStart(2, '0');
+            const m  = months[dt.getUTCMonth()];
+            const y  = dt.getUTCFullYear();
+            return `${d} ${m} ${y}`;
+        }
+        // "dd-mm-yyyy" format
+        const [d, m, y] = str.split("-");
+        return `${d} ${months[+m - 1]} ${y}`;
+        }
+
+        function costFor(duration) {
+        return duration === '2hr' ? COST_2HR : COST_1HR;
+        }
+
+        // ─── Fetch all rows ──────────────────────────────────────────────────────
+        $.ajax({
+        url: API_BASE,
+        method: "GET",
+        headers: HEADERS
+        }).done(function (rows) {
+        $("#loader").hide();
+        $("#content").fadeIn();
+
+        sessions = [];
+        rows.forEach(row => {
+            if (!row.Date) return;
+            const normDate = normaliseDate(row.Date);
+            if (!normDate) return;
+            sessions.push({
+            _id:      row._id,
+            date:     normDate,
+            duration: row.Duration || "2hr",
+            cost:     costFor(row.Duration || "2hr")
+            });
         });
+
+        // Sort chronologically
         sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+
         updateUI();
-        $btn.prop("disabled", false).text("Add Date");
-      })
-      .catch(err => {
-        debugEl.text(debugEl.text() + "\n\nNetwork error: " + err.message);
-        $btn.prop("disabled", false).text("Add Date");
-      });
-    });
+        }).fail(function() {
+        alert("Failed to load data from DB.");
+        });
 
-    // ─── View History ────────────────────────────────────────────────────────
-    $("#viewDatesBtn").click(function () {
-      $("#datesList").slideToggle();
-    });
+        // ─── Duration toggle ─────────────────────────────────────────────────────
+        function setDuration(d) {
+        selectedDuration = d;
+        $("#btn2hr").toggleClass("active", d === '2hr');
+        $("#btn1hr").toggleClass("active", d === '1hr');
+        validateDuplicateDate();
+        }
 
-    // ─── Init ────────────────────────────────────────────────────────────────
-    $(document).ready(() => $("#newDate").val(new Date().toISOString().split("T")[0]));
+        // ─── UI Update ───────────────────────────────────────────────────────────
+        function updateUI() {
+        // ── Split sessions at the point OLD_TARGET was met ───────────────────
+        let runningOld = 0, splitIndex = -1;
+        for (let i = 0; i < sessions.length; i++) {
+            runningOld += sessions[i].cost;
+            if (runningOld >= OLD_TARGET) { splitIndex = i; break; }
+        }
 
-    function validateDuplicateDate() {
-      const val = $("#newDate").val();
-      if (!val) return;
-      const [y, m, d] = val.split("-");
-      const formatted = `${d}-${m}-${y}`;
-      const isDup = sessions.some(s => s.date === formatted);
+        // oldSessions: up to and including the session that met OLD_TARGET
+        // newSessions: everything after that
+        const oldSessions = splitIndex >= 0 ? sessions.slice(0, splitIndex + 1) : sessions.slice();
+        const newSessions = splitIndex >= 0 ? sessions.slice(splitIndex + 1) : [];
 
-      if (isDup) {
-        $("#addDateBtn").prop("disabled", true).text("Already Recorded");
-      } else {
-        $("#addDateBtn").prop("disabled", false).text("Add Date");
-      }
-    }
+        // ── Stats based on newSessions toward TARGET_AMOUNT ──────────────────
+        const totalCollected  = newSessions.reduce((sum, s) => sum + s.cost, 0);
+        const totalHours      = newSessions.reduce((sum, s) => sum + (s.duration === '2hr' ? 2 : 1), 0);
+        const progressPercent = TARGET_AMOUNT > 0 ? Math.min((totalCollected / TARGET_AMOUNT) * 100, 100) : 0;
+        const surplus         = totalCollected - TARGET_AMOUNT;
 
-    $("#newDate").on("change", validateDuplicateDate);
-  </script>
-</body>
-</html>
+        $("#totalHours").text(totalHours);
+        $("#total").text(totalCollected);
+        $("#target").text(TARGET_AMOUNT);
+        $("#progress-fill").css("width", progressPercent + "%");
+
+        const surplusEl = $("#surplusAmount");
+        if (surplus >= 0) {
+            surplusEl.text("+" + surplus).css("color", "var(--success)");
+        } else {
+            surplusEl.text(surplus).css("color", "var(--danger)");
+        }
+
+        // ── Check if new target met — if so, merge new into old ──────────────
+        let newTargetMetIndex = -1;
+        let runningNew = 0;
+        for (let i = 0; i < newSessions.length; i++) {
+            runningNew += newSessions[i].cost;
+            if (runningNew >= TARGET_AMOUNT) { newTargetMetIndex = i; break; }
+        }
+
+        // Sessions shown in "View History": new sessions (or merged if new target met)
+        const currentSessions = newTargetMetIndex >= 0 ? [] : newSessions;
+        // Sessions shown in "View Old History": old sessions + merged new if new target met
+        const historicSessions = newTargetMetIndex >= 0
+            ? [...oldSessions, ...newSessions]
+            : oldSessions;
+
+        // ── Buttons ──────────────────────────────────────────────────────────
+        $("#viewDatesBtn").prop("disabled", currentSessions.length === 0);
+        $("#viewOldDatesBtn").prop("disabled", historicSessions.length === 0);
+
+        // ── Current history list ─────────────────────────────────────────────
+        const buildList = (list, startIndex = 0) => list.map((s, i) => {
+            const durationClass = s.duration === '2hr' ? 'two-hr' : 'one-hr';
+            const durationLabel = s.duration === '2hr' ? '2 Hours' : '1 Hour';
+            return `<li>
+            <span class="li-index">#${startIndex + i + 1}</span>
+            <span class="li-date">${formatDisplay(s.date)}</span>
+            <span class="li-duration ${durationClass}">${durationLabel}</span>
+            <span class="li-cost">₹${s.cost}</span>
+            </li>`;
+        }).join('');
+
+        const currentHTML = buildList(currentSessions);
+        $("#datesList").html(`<ul>${currentHTML || '<li style="justify-content:center;color:#94a3b8;">No new sessions yet</li>'}</ul>`);
+
+        const oldHTML = buildList(historicSessions);
+        $("#oldDatesList").html(`<ul>${oldHTML || '<li style="justify-content:center;color:#94a3b8;">No history yet</li>'}</ul>`);
+
+        // ── Target-met note ──────────────────────────────────────────────────
+        computeTargetMetDate(newSessions, newTargetMetIndex);
+
+        validateDuplicateDate();
+        }
+
+        function computeTargetMetDate(newSessions, newTargetMetIndex) {
+        if (newTargetMetIndex >= 0) {
+            const s = newSessions[newTargetMetIndex];
+            $("#targetMetNote").html(`
+            <div class="target-met-note">
+                🎯 New target of ₹${TARGET_AMOUNT} was met on
+                <strong>${formatDisplay(s.date)}</strong>
+                &nbsp;(${s.duration === '2hr' ? '2-hour' : '1-hour'} session)
+            </div>`);
+        } else {
+            $("#targetMetNote").html('');
+        }
+        }
+
+        // ─── Add Date ────────────────────────────────────────────────────────────
+        $("#addDateBtn").click(function () {
+        const pin = prompt("Enter PIN:");
+        if (pin !== "12345") return alert("Wrong PIN");
+
+        const selectedDate = $("#newDate").val();
+        if (!selectedDate) return alert("Select a date");
+
+        const [y, m, d] = selectedDate.split("-");
+        const formattedDate = `${d}-${m}-${y}`;       // dd-mm-yyyy for display/dedup
+        const isoDate       = `${y}-${m}-${d}`;        // yyyy-mm-dd for DB storage
+
+        if (sessions.some(s => s.date === formattedDate)) return;
+
+        const $btn = $(this).prop("disabled", true).text("Saving...");
+
+        const payload = { Date: isoDate, Duration: selectedDuration, id: Date.now() };
+
+        // Show debug panel with outgoing request
+        const debugEl = $("#debugPanel").show();
+        debugEl.text("→ POST " + API_BASE + "\n" +
+            "Headers: " + JSON.stringify({ "x-apikey": HEADERS["x-apikey"], "content-type": HEADERS["content-type"] }, null, 2) + "\n" +
+            "Body: " + JSON.stringify(payload, null, 2) + "\n\nWaiting for response...");
+
+        fetch(API_BASE, {
+            method: "POST",
+            headers: HEADERS,
+            body: JSON.stringify(payload)
+        })
+        .then(async res => {
+            const text = await res.text();
+            let parsed;
+            try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
+
+            debugEl.text("→ POST " + API_BASE + "\n" +
+            "Body sent: " + JSON.stringify(payload) + "\n\n" +
+            "← Status: " + res.status + " " + res.statusText + "\n" +
+            "Response: " + JSON.stringify(parsed, null, 2));
+
+            if (!res.ok) {
+            $btn.prop("disabled", false).text("Add Date");
+            return;
+            }
+
+            sessions.push({
+            _id:      parsed._id,
+            date:     formattedDate,
+            duration: selectedDuration,
+            cost:     costFor(selectedDuration)
+            });
+            sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+            updateUI();
+            $btn.prop("disabled", false).text("Add Date");
+        })
+        .catch(err => {
+            debugEl.text(debugEl.text() + "\n\nNetwork error: " + err.message);
+            $btn.prop("disabled", false).text("Add Date");
+        });
+        });
+
+        // ─── View History ────────────────────────────────────────────────────────
+        $("#viewDatesBtn").click(function () {
+        $("#datesList").slideToggle();
+        $("#oldDatesList").slideUp(); // close old if open
+        });
+
+        $("#viewOldDatesBtn").click(function () {
+        $("#oldDatesList").slideToggle();
+        $("#datesList").slideUp(); // close new if open
+        });
+
+        // ─── Init ────────────────────────────────────────────────────────────────
+        $(document).ready(() => $("#newDate").val(new Date().toISOString().split("T")[0]));
+
+        function validateDuplicateDate() {
+        const val = $("#newDate").val();
+        if (!val) return;
+        const [y, m, d] = val.split("-");
+        const formatted = `${d}-${m}-${y}`;
+        const isDup = sessions.some(s => s.date === formatted);
+
+        if (isDup) {
+            $("#addDateBtn").prop("disabled", true).text("Already Recorded");
+        } else {
+            $("#addDateBtn").prop("disabled", false).text("Add Date");
+        }
+        }
+
+        $("#newDate").on("change", validateDuplicateDate);
+    </script>
+    </body>
+    </html>
