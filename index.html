@@ -236,12 +236,12 @@
       
       <div class="stats-grid">
         <div class="stat-card">
-          <span>Total Games</span>
-          <strong id="dateCount">0</strong>
+          <span>Total Hours</span>
+          <strong id="totalHours">0</strong>
         </div>
         <div class="stat-card">
-          <span>Per Game</span>
-          <strong id="amount">₹72</strong>
+          <span>Per Hour</span>
+          <strong>₹36</strong>
         </div>
         <div class="stat-card">
           <span>Surplus</span>
@@ -275,6 +275,9 @@
       </div>
 
       <div id="targetMetNote"></div>
+
+      <!-- Debug panel -->
+      <div id="debugPanel" style="display:none; margin-top:16px; background:#1e293b; color:#94a3b8; font-family:monospace; font-size:0.75rem; padding:14px; border-radius:10px; white-space:pre-wrap; word-break:break-all;"></div>
     </div>
   </div>
 
@@ -282,7 +285,8 @@
     /*
      * DB SCHEMA (new):
      * Collection: badminton-data
-     *   Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
+     *   - Config row : { Type: "config", ShuttleCostPerGame: 72, TargetAmount: 1080 }
+     *   - Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
      *
      * The old single-row (CSV Dates) is no longer used for sessions.
      */
@@ -305,17 +309,16 @@
       return new Date(+y, +m - 1, +d);
     }
 
-    // Normalise any date string to "dd-mm-yyyy" for consistent storage & dedup
+    // Normalise any date value from RestDB to "dd-mm-yyyy"
+    // RestDB date fields return ISO strings like "2025-10-05T00:00:00.000Z"
     function normaliseDate(str) {
-      if (!str) return str;
-      if (str.includes('T')) {
-        const dt = new Date(str);
-        const d  = String(dt.getUTCDate()).padStart(2, '0');
-        const m  = String(dt.getUTCMonth() + 1).padStart(2, '0');
-        const y  = dt.getUTCFullYear();
-        return `${d}-${m}-${y}`;
-      }
-      return str; // already dd-mm-yyyy
+      if (!str) return null;
+      const dt = new Date(str);
+      if (isNaN(dt.getTime())) return null;
+      const d = String(dt.getUTCDate()).padStart(2, '0');
+      const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      const y = dt.getUTCFullYear();
+      return `${d}-${m}-${y}`;
     }
 
     function formatDisplay(str) {
@@ -350,14 +353,15 @@
 
       sessions = [];
       rows.forEach(row => {
-        if (row.Date) {
-          sessions.push({
-            _id:      row._id,
-            date:     normaliseDate(row.Date),
-            duration: row.Duration || "2hr",
-            cost:     costFor(row.Duration || "2hr")
-          });
-        }
+        if (!row.Date) return;
+        const normDate = normaliseDate(row.Date);
+        if (!normDate) return;
+        sessions.push({
+          _id:      row._id,
+          date:     normDate,
+          duration: row.Duration || "2hr",
+          cost:     costFor(row.Duration || "2hr")
+        });
       });
 
       // Sort chronologically
@@ -379,11 +383,11 @@
     // ─── UI Update ───────────────────────────────────────────────────────────
     function updateUI() {
       const totalCollected  = sessions.reduce((sum, s) => sum + s.cost, 0);
+      const totalHours      = sessions.reduce((sum, s) => sum + (s.duration === '2hr' ? 2 : 1), 0);
       const progressPercent = TARGET_AMOUNT > 0 ? Math.min((totalCollected / TARGET_AMOUNT) * 100, 100) : 0;
       const surplus         = totalCollected - TARGET_AMOUNT;
 
-      $("#dateCount").text(sessions.length);
-      $("#amount").text(COST_2HR);
+      $("#totalHours").text(totalHours);
       $("#total").text(totalCollected);
       $("#target").text(TARGET_AMOUNT);
       $("#progress-fill").css("width", progressPercent + "%");
@@ -442,31 +446,44 @@
 
     // ─── Add Date ────────────────────────────────────────────────────────────
     $("#addDateBtn").click(function () {
-      const pin = prompt("Enter PIN:");
-      if (pin !== "12345") return alert("Wrong PIN");
+      const pin = prompt("Enter 4-digit PIN:");
+      if (pin !== "54321") return alert("Wrong PIN");
 
       const selectedDate = $("#newDate").val();
       if (!selectedDate) return alert("Select a date");
 
       const [y, m, d] = selectedDate.split("-");
-      const formattedDate = `${d}-${m}-${y}`;
+      const formattedDate = `${d}-${m}-${y}`;       // dd-mm-yyyy for display/dedup
+      const isoDate       = `${y}-${m}-${d}`;        // yyyy-mm-dd for DB storage
 
       if (sessions.some(s => s.date === formattedDate)) return;
 
       const $btn = $(this).prop("disabled", true).text("Saving...");
 
-      // POST a new session row
-      $.ajax({
-        url: API_BASE,
+      const payload = { Date: isoDate, Duration: selectedDuration, id: Date.now() };
+
+      fetch(API_BASE, {
         method: "POST",
         headers: HEADERS,
-        data: JSON.stringify({
-          Date:     formattedDate,
-          Duration: selectedDuration
-        })
-      }).done(function(newRow) {
+        body: JSON.stringify(payload)
+      })
+      .then(async res => {
+        const text = await res.text();
+        let parsed;
+        try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
+
+        debugEl.text("→ POST " + API_BASE + "\n" +
+          "Body sent: " + JSON.stringify(payload) + "\n\n" +
+          "← Status: " + res.status + " " + res.statusText + "\n" +
+          "Response: " + JSON.stringify(parsed, null, 2));
+
+        if (!res.ok) {
+          $btn.prop("disabled", false).text("Add Date");
+          return;
+        }
+
         sessions.push({
-          _id:      newRow._id,
+          _id:      parsed._id,
           date:     formattedDate,
           duration: selectedDuration,
           cost:     costFor(selectedDuration)
@@ -474,8 +491,9 @@
         sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
         updateUI();
         $btn.prop("disabled", false).text("Add Date");
-      }).fail(function() {
-        alert("Failed to save. Please try again.");
+      })
+      .catch(err => {
+        debugEl.text(debugEl.text() + "\n\nNetwork error: " + err.message);
         $btn.prop("disabled", false).text("Add Date");
       });
     });
