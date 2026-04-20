@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Badminton Tracker</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root {
       --primary: #2563eb;
       --success: #10b981;
-      --danger: #ef4444; /* Added for negative surplus */
+      --danger: #ef4444;
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #1e293b;
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       margin: 0;
@@ -42,15 +42,14 @@
     /* Stats Grid */
     .stats-grid {
       display: grid;
-      /* MODIFIED: Changed to 3 columns to fit Surplus */
-      grid-template-columns: 1fr 1fr 1fr; 
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       margin-bottom: 20px;
     }
 
     .stat-card {
       background: var(--card);
-      padding: 12px 5px; /* Reduced padding slightly to fit 3 cols */
+      padding: 12px 5px;
       border-radius: 12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       text-align: center;
@@ -58,7 +57,7 @@
 
     .stat-card span {
       display: block;
-      font-size: 0.75rem; /* Slightly smaller text */
+      font-size: 0.75rem;
       color: #64748b;
       text-transform: uppercase;
       font-weight: 600;
@@ -101,14 +100,51 @@
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     }
 
+    /* Top row: date + duration side by side */
+    .top-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      margin-bottom: 10px;
+    }
+
     input[type="date"] {
-      width: 100%;
+      flex: 1;
       padding: 10px;
       border: 1px solid #cbd5e1;
       border-radius: 6px;
-      margin-bottom: 12px;
       box-sizing: border-box;
-      font-size: 1rem;
+      font-size: 0.95rem;
+      font-family: inherit;
+      min-width: 0;
+    }
+
+    /* Duration toggle */
+    .duration-toggle {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .duration-btn {
+      padding: 6px 12px;
+      border: 2px solid #cbd5e1;
+      border-radius: 6px;
+      background: white;
+      color: #64748b;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .duration-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
     }
 
     button {
@@ -117,6 +153,7 @@
       border: none;
       border-radius: 6px;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
       transition: opacity 0.2s;
       margin-bottom: 8px;
@@ -126,32 +163,51 @@
     #viewDatesBtn { background: #64748b; color: white; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    /* List Styling */
+    /* History List */
     #datesList {
       margin-top: 15px;
-      max-height: 200px;
+      max-height: 260px;
       overflow-y: auto;
       border-top: 1px solid #e2e8f0;
       display: none;
     }
 
-    ul { list-style: none; padding: 0; }
+    ul { list-style: none; padding: 0; margin: 0; }
     li {
-      padding: 8px 0;
+      padding: 9px 4px;
       border-bottom: 1px solid #f1f5f9;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      gap: 4px;
     }
 
-    .special-note {
-      font-size: 0.75rem;
-      background: #fef3c7;
-      color: #92400e;
-      padding: 8px;
-      border-radius: 6px;
-      margin-top: 15px;
+    .li-index { font-size: 0.75rem; color: #94a3b8; font-weight: 600; min-width: 22px; }
+    .li-date { font-weight: 600; color: var(--text); min-width: 90px; flex: 1; }
+    .li-duration {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      flex-shrink: 0;
+    }
+    .li-duration.two-hr { background: #dbeafe; color: #1d4ed8; }
+    .li-duration.one-hr  { background: #fef3c7; color: #92400e; }
+    .li-cost { font-weight: 700; color: var(--success); flex-shrink: 0; margin-left: 8px; }
+
+    /* Target met note */
+    .target-met-note {
+      font-size: 0.82rem;
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      color: #065f46;
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-top: 18px;
       text-align: center;
+      font-weight: 600;
+      border: 1px solid #6ee7b7;
+      line-height: 1.5;
     }
 
     /* Loader */
@@ -185,7 +241,7 @@
         </div>
         <div class="stat-card">
           <span>Per Game</span>
-          <strong>₹<span id="amount"></span></strong>
+          <strong id="amount">₹72</strong>
         </div>
         <div class="stat-card">
           <span>Surplus</span>
@@ -204,85 +260,187 @@
       </div>
 
       <div class="controls">
-        <input type="date" id="newDate" />
+        <div class="top-row">
+          <input type="date" id="newDate" />
+          <div class="duration-toggle">
+            <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹72</button>
+            <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹36</button>
+          </div>
+        </div>
+
         <button id="addDateBtn">Add Date</button>
         <button id="viewDatesBtn" disabled>View History</button>
         
         <div id="datesList"></div>
       </div>
 
-      <p class="special-note">
-        ✨ 28-12-2025: 1hr session (+₹36 collected)
-      </p>
-      <p class="special-note">
-        ✨ 01-03-2026: 1hr session (+₹36 collected)
-      </p>
-      <p class="special-note">
-        ✨ 08-03-2026: 1hr session (+₹36 collected)
-      </p>
-      <p class="special-note">
-        ✨ 15-03-2026: 1hr session (+₹36 collected)
-      </p>
-      <p class="special-note">
-        ✨ 29-03-2026: 1hr session (+₹36 collected)
-      </p>
+      <div id="targetMetNote"></div>
     </div>
   </div>
 
   <script>
-    let dates = [], recordId, shuttleCostPerGame = 0, targetAmount = 0;
+    /*
+     * DB SCHEMA (new):
+     * Collection: badminton-data
+     *   Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
+     *
+     * The old single-row (CSV Dates) is no longer used for sessions.
+     */
 
-    // Fetch initial data
+    // ─── State ───────────────────────────────────────────────────────────────
+    let sessions      = [];   // [{ _id, date: "dd-mm-yyyy", duration: "2hr"|"1hr", cost }]
+    let selectedDuration = '2hr';
+
+    const COST_2HR     = 72;
+    const COST_1HR     = 36;
+    const TARGET_AMOUNT = 1080;
+    const API_BASE = "https://badminton1-728f.restdb.io/rest/badminton-data";
+    const HEADERS  = { "x-apikey": "69133b1c7f34ed2ba4200e07", "content-type": "application/json" };
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    function parseDate(str) {
+      if (!str) return new Date(0);
+      if (str.includes('T')) return new Date(str);   // ISO
+      const [d, m, y] = str.split("-");              // dd-mm-yyyy
+      return new Date(+y, +m - 1, +d);
+    }
+
+    // Normalise any date string to "dd-mm-yyyy" for consistent storage & dedup
+    function normaliseDate(str) {
+      if (!str) return str;
+      if (str.includes('T')) {
+        const dt = new Date(str);
+        const d  = String(dt.getUTCDate()).padStart(2, '0');
+        const m  = String(dt.getUTCMonth() + 1).padStart(2, '0');
+        const y  = dt.getUTCFullYear();
+        return `${d}-${m}-${y}`;
+      }
+      return str; // already dd-mm-yyyy
+    }
+
+    function formatDisplay(str) {
+      // Handles both "dd-mm-yyyy" and ISO "yyyy-mm-ddT..." formats
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      if (!str) return str;
+      // ISO format from DB (e.g. "2025-10-12T00:00:00.000Z")
+      if (str.length > 10 && str.includes('T')) {
+        const dt = new Date(str);
+        const d  = String(dt.getUTCDate()).padStart(2, '0');
+        const m  = months[dt.getUTCMonth()];
+        const y  = dt.getUTCFullYear();
+        return `${d} ${m} ${y}`;
+      }
+      // "dd-mm-yyyy" format
+      const [d, m, y] = str.split("-");
+      return `${d} ${months[+m - 1]} ${y}`;
+    }
+
+    function costFor(duration) {
+      return duration === '2hr' ? COST_2HR : COST_1HR;
+    }
+
+    // ─── Fetch all rows ──────────────────────────────────────────────────────
     $.ajax({
-      url: "https://badminton1-728f.restdb.io/rest/badminton-data",
+      url: API_BASE,
       method: "GET",
-      headers: { "x-apikey": "69133b1c7f34ed2ba4200e07" } 
-    }).done(function (response) {
+      headers: HEADERS
+    }).done(function (rows) {
       $("#loader").hide();
       $("#content").fadeIn();
 
-      // Ensure we handle response safely
-      if(response && response.length > 0) {
-          const data = response[0];
-          dates = data.Dates ? data.Dates.split(",").filter(d => d) : [];
-          shuttleCostPerGame = data.ShuttleCostPerGame || 0;
-          targetAmount = data.TargetAmount || 0;
-          recordId = data._id;
-          updateUI();
-      } else {
-          alert("No data found.");
-      }
+      sessions = [];
+      rows.forEach(row => {
+        if (row.Date) {
+          sessions.push({
+            _id:      row._id,
+            date:     normaliseDate(row.Date),
+            duration: row.Duration || "2hr",
+            cost:     costFor(row.Duration || "2hr")
+          });
+        }
+      });
+
+      // Sort chronologically
+      sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+
+      updateUI();
+    }).fail(function() {
+      alert("Failed to load data from DB.");
     });
 
-    function updateUI() {
-      const extraAmount = 180;
-      const totalCollected = (shuttleCostPerGame * dates.length) + extraAmount;
-      const progressPercent = targetAmount > 0 ? Math.min((totalCollected / targetAmount) * 100, 100) : 0;
-      
-      // MODIFIED: Calculate Surplus
-      const surplus = totalCollected - targetAmount;
+    // ─── Duration toggle ─────────────────────────────────────────────────────
+    function setDuration(d) {
+      selectedDuration = d;
+      $("#btn2hr").toggleClass("active", d === '2hr');
+      $("#btn1hr").toggleClass("active", d === '1hr');
+      validateDuplicateDate();
+    }
 
-      $("#dateCount").text(dates.length);
-      $("#amount").text(shuttleCostPerGame);
+    // ─── UI Update ───────────────────────────────────────────────────────────
+    function updateUI() {
+      const totalCollected  = sessions.reduce((sum, s) => sum + s.cost, 0);
+      const progressPercent = TARGET_AMOUNT > 0 ? Math.min((totalCollected / TARGET_AMOUNT) * 100, 100) : 0;
+      const surplus         = totalCollected - TARGET_AMOUNT;
+
+      $("#dateCount").text(sessions.length);
+      $("#amount").text(COST_2HR);
       $("#total").text(totalCollected);
-      $("#target").text(targetAmount);
+      $("#target").text(TARGET_AMOUNT);
       $("#progress-fill").css("width", progressPercent + "%");
 
-      // MODIFIED: Update Surplus UI
       const surplusEl = $("#surplusAmount");
-      if(surplus >= 0) {
+      if (surplus >= 0) {
         surplusEl.text("+" + surplus).css("color", "var(--success)");
       } else {
         surplusEl.text(surplus).css("color", "var(--danger)");
       }
 
-      if (dates.length > 0) $("#viewDatesBtn").prop("disabled", false);
+      $("#viewDatesBtn").prop("disabled", sessions.length === 0);
 
-      let listHTML = "<ul>" + dates.map(d => `<li>${d} <span>✅</span></li>`).join('') + "</ul>";
-      $("#datesList").html(listHTML);
+      // ── History list ────────────────────────────────────────────────────
+      const listItems = sessions.map((s, i) => {
+        const durationClass = s.duration === '2hr' ? 'two-hr' : 'one-hr';
+        const durationLabel = s.duration === '2hr' ? '2 Hours' : '1 Hour';
+        return `<li>
+          <span class="li-index">#${i + 1}</span>
+          <span class="li-date">${formatDisplay(s.date)}</span>
+          <span class="li-duration ${durationClass}">${durationLabel}</span>
+          <span class="li-cost">₹${s.cost}</span>
+        </li>`;
+      }).join('');
+
+      $("#datesList").html(`<ul>${listItems.length ? listItems : '<li style="justify-content:center;color:#94a3b8;">No sessions yet</li>'}</ul>`);
+
+      // ── Target-met date ──────────────────────────────────────────────────
+      computeTargetMetDate();
+
       validateDuplicateDate();
     }
 
+    function computeTargetMetDate() {
+      if (!TARGET_AMOUNT || TARGET_AMOUNT <= 0) {
+        $("#targetMetNote").html(''); return;
+      }
+
+      let running = 0, metSession = null;
+      for (const s of sessions) {
+        running += s.cost;
+        if (running >= TARGET_AMOUNT) { metSession = s; break; }
+      }
+
+      if (metSession) {
+        $("#targetMetNote").html(`
+          <div class="target-met-note">
+            🎯 Target of ₹${TARGET_AMOUNT} was met on
+            <strong>${formatDisplay(metSession.date)}</strong>
+            &nbsp;(${metSession.duration === '2hr' ? '2-hour' : '1-hour'} session)
+          </div>`);
+      } else {
+        $("#targetMetNote").html('');
+      }
+    }
+
+    // ─── Add Date ────────────────────────────────────────────────────────────
     $("#addDateBtn").click(function () {
       const pin = prompt("Enter PIN:");
       if (pin !== "12345") return alert("Wrong PIN");
@@ -293,39 +451,57 @@
       const [y, m, d] = selectedDate.split("-");
       const formattedDate = `${d}-${m}-${y}`;
 
-      if (dates.includes(formattedDate)) return;
+      if (sessions.some(s => s.date === formattedDate)) return;
 
-      $(this).prop("disabled", true).text("Saving...");
-      dates.push(formattedDate);
+      const $btn = $(this).prop("disabled", true).text("Saving...");
 
+      // POST a new session row
       $.ajax({
-        url: "https://badminton1-728f.restdb.io/rest/badminton-data/" + recordId,
-        method: "PUT",
-        headers: { "x-apikey": "69133b1c7f34ed2ba4200e07", "content-type": "application/json" },
-        data: JSON.stringify({ Dates: dates.join(",") })
-      }).done(() => {
+        url: API_BASE,
+        method: "POST",
+        headers: HEADERS,
+        data: JSON.stringify({
+          Date:     formattedDate,
+          Duration: selectedDuration
+        })
+      }).done(function(newRow) {
+        sessions.push({
+          _id:      newRow._id,
+          date:     formattedDate,
+          duration: selectedDuration,
+          cost:     costFor(selectedDuration)
+        });
+        sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
         updateUI();
-        $(this).prop("disabled", false).text("Add Date");
+        $btn.prop("disabled", false).text("Add Date");
+      }).fail(function() {
+        alert("Failed to save. Please try again.");
+        $btn.prop("disabled", false).text("Add Date");
       });
     });
 
-    $("#viewDatesBtn").click(function() {
+    // ─── View History ────────────────────────────────────────────────────────
+    $("#viewDatesBtn").click(function () {
       $("#datesList").slideToggle();
     });
 
+    // ─── Init ────────────────────────────────────────────────────────────────
     $(document).ready(() => $("#newDate").val(new Date().toISOString().split("T")[0]));
 
     function validateDuplicateDate() {
       const val = $("#newDate").val();
       if (!val) return;
       const [y, m, d] = val.split("-");
-      if (dates.includes(`${d}-${m}-${y}`)) {
+      const formatted = `${d}-${m}-${y}`;
+      const isDup = sessions.some(s => s.date === formatted);
+
+      if (isDup) {
         $("#addDateBtn").prop("disabled", true).text("Already Recorded");
       } else {
         $("#addDateBtn").prop("disabled", false).text("Add Date");
       }
     }
-    
+
     $("#newDate").on("change", validateDuplicateDate);
   </script>
 </body>
