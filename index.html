@@ -252,7 +252,7 @@
             </div>
             <div class="stat-card">
             <span>Per Hour</span>
-            <strong>₹36</strong>
+            <strong>₹50</strong>
             </div>
             <div class="stat-card">
             <span>Surplus</span>
@@ -274,8 +274,8 @@
             <div class="top-row">
             <input type="date" id="newDate" />
             <div class="duration-toggle">
-                <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹72</button>
-                <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹36</button>
+                <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹100</button>
+                <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹50</button>
             </div>
             </div>
 
@@ -301,7 +301,7 @@
         /*
         * DB SCHEMA (new):
         * Collection: badminton-data
-        *   - Config row : { Type: "config", ShuttleCostPerGame: 72, TargetAmount: 1080 }
+        *   - Config row : { Type: "config", ShuttleCostPerGame: 100, TargetAmount: 1080 }
         *   - Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
         *
         * The old single-row (CSV Dates) is no longer used for sessions.
@@ -311,8 +311,8 @@
         let sessions      = [];   // [{ _id, date: "dd-mm-yyyy", duration: "2hr"|"1hr", cost }]
         let selectedDuration = '2hr';
 
-        const COST_2HR      = 72;
-        const COST_1HR      = 36;
+        const COST_2HR      = 100;
+        const COST_1HR      = 50;
         const OLD_TARGET    = 1080;  // previously met target — sessions up to this split into old history
         const TARGET_AMOUNT = 1180;  // new fresh target (full ₹1180 needed from scratch)
         const API_BASE = "https://badminton1-728f.restdb.io/rest/badminton-data";
