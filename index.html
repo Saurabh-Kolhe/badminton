@@ -39,7 +39,6 @@
         margin-bottom: 24px;
         }
 
-        /* Stats Grid */
         .stats-grid {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
@@ -68,7 +67,6 @@
         color: var(--text);
         }
 
-        /* Progress Bar */
         .progress-container {
         background: var(--card);
         padding: 16px;
@@ -92,7 +90,6 @@
         transition: width 0.5s ease;
         }
 
-        /* Controls */
         .controls {
         background: var(--card);
         padding: 20px;
@@ -100,7 +97,6 @@
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
         }
 
-        /* Top row: date + duration side by side */
         .top-row {
         display: flex;
         gap: 8px;
@@ -119,7 +115,6 @@
         min-width: 0;
         }
 
-        /* Duration toggle */
         .duration-toggle {
         display: flex;
         flex-direction: column;
@@ -147,6 +142,12 @@
         color: white;
         }
 
+        .duration-btn.cancel-btn.active {
+        border-color: var(--danger);
+        background: var(--danger);
+        color: white;
+        }
+
         button {
         width: 100%;
         padding: 12px;
@@ -164,7 +165,6 @@
         #viewOldDatesBtn { background: #94a3b8; color: white; }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* History List */
         #datesList, #oldDatesList {
         margin-top: 15px;
         max-height: 260px;
@@ -193,11 +193,12 @@
         border-radius: 20px;
         flex-shrink: 0;
         }
-        .li-duration.two-hr { background: #dbeafe; color: #1d4ed8; }
-        .li-duration.one-hr  { background: #fef3c7; color: #92400e; }
+        .li-duration.two-hr     { background: #dbeafe; color: #1d4ed8; }
+        .li-duration.one-hr     { background: #fef3c7; color: #92400e; }
+        .li-duration.cancelled  { background: #fee2e2; color: #991b1b; }
         .li-cost { font-weight: 700; color: var(--success); flex-shrink: 0; margin-left: 8px; }
+        .li-cost.deduction { color: var(--danger); }
 
-        /* Target met note */
         .target-met-note {
         font-size: 0.82rem;
         background: linear-gradient(135deg, #d1fae5, #a7f3d0);
@@ -211,7 +212,6 @@
         line-height: 1.5;
         }
 
-        /* Loader */
         .loader {
         border: 4px solid #f3f3f3;
         border-top: 4px solid var(--primary);
@@ -244,7 +244,7 @@
         <div id="loader" class="loader"></div>
 
         <div id="content" style="display: none;">
-        
+
         <div class="stats-grid">
             <div class="stat-card">
             <span>Total Hours</span>
@@ -276,6 +276,7 @@
             <div class="duration-toggle">
                 <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹100</button>
                 <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹50</button>
+                <button class="duration-btn cancel-btn" id="btnCancelled" type="button" onclick="setDuration('cancelled')">❌ -₹22</button>
             </div>
             </div>
 
@@ -287,47 +288,43 @@
             <div id="oldDatesList"></div>
             <p class="special-note">
             ✨ Previous target of Rs 1080 was met on 15-02-2026
-        </p>
+            </p>
         </div>
 
         <div id="targetMetNote"></div>
 
-        <!-- Debug panel -->
         <div id="debugPanel" style="display:none; margin-top:16px; background:#1e293b; color:#94a3b8; font-family:monospace; font-size:0.75rem; padding:14px; border-radius:10px; white-space:pre-wrap; word-break:break-all;"></div>
         </div>
     </div>
 
     <script>
-        /*
-        * DB SCHEMA (new):
-        * Collection: badminton-data
-        *   - Config row : { Type: "config", ShuttleCostPerGame: 100, TargetAmount: 1080 }
-        *   - Session rows: { Type: "session", Date: "dd-mm-yyyy", Duration: "2hr" | "1hr" }
-        *
-        * The old single-row (CSV Dates) is no longer used for sessions.
-        */
-
         // ─── State ───────────────────────────────────────────────────────────────
-        let sessions      = [];   // [{ _id, date: "dd-mm-yyyy", duration: "2hr"|"1hr", cost }]
+        let sessions         = [];
         let selectedDuration = '2hr';
 
-        const COST_2HR      = 100;
-        const COST_1HR      = 50;
-        const OLD_TARGET    = 1080;  // previously met target — sessions up to this split into old history
-        const TARGET_AMOUNT = 1180;  // new fresh target (full ₹1180 needed from scratch)
+        const COST_2HR        =  100;
+        const COST_1HR        =  50;
+        const COST_CANCELLED  = -22;   // deduction for cancellation
+        const OLD_TARGET      = 1080;
+        const TARGET_AMOUNT   = 1180;
         const API_BASE = "https://badminton1-728f.restdb.io/rest/badminton-data";
         const HEADERS  = { "x-apikey": "69133b1c7f34ed2ba4200e07", "content-type": "application/json" };
 
         // ─── Helpers ─────────────────────────────────────────────────────────────
+        function costFor(duration) {
+        if (duration === '2hr')       return COST_2HR;
+        if (duration === '1hr')       return COST_1HR;
+        if (duration === 'cancelled') return COST_CANCELLED;
+        return COST_2HR;
+        }
+
         function parseDate(str) {
         if (!str) return new Date(0);
-        if (str.includes('T')) return new Date(str);   // ISO
-        const [d, m, y] = str.split("-");              // dd-mm-yyyy
+        if (str.includes('T')) return new Date(str);
+        const [d, m, y] = str.split("-");
         return new Date(+y, +m - 1, +d);
         }
 
-        // Normalise any date value from RestDB to "dd-mm-yyyy"
-        // RestDB date fields return ISO strings like "2025-10-05T00:00:00.000Z"
         function normaliseDate(str) {
         if (!str) return null;
         const dt = new Date(str);
@@ -339,27 +336,17 @@
         }
 
         function formatDisplay(str) {
-        // Handles both "dd-mm-yyyy" and ISO "yyyy-mm-ddT..." formats
         const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
         if (!str) return str;
-        // ISO format from DB (e.g. "2025-10-12T00:00:00.000Z")
         if (str.length > 10 && str.includes('T')) {
             const dt = new Date(str);
-            const d  = String(dt.getUTCDate()).padStart(2, '0');
-            const m  = months[dt.getUTCMonth()];
-            const y  = dt.getUTCFullYear();
-            return `${d} ${m} ${y}`;
+            return `${String(dt.getUTCDate()).padStart(2,'0')} ${months[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
         }
-        // "dd-mm-yyyy" format
         const [d, m, y] = str.split("-");
         return `${d} ${months[+m - 1]} ${y}`;
         }
 
-        function costFor(duration) {
-        return duration === '2hr' ? COST_2HR : COST_1HR;
-        }
-
-        // ─── Fetch all rows ──────────────────────────────────────────────────────
+        // ─── Fetch ───────────────────────────────────────────────────────────────
         $.ajax({
         url: API_BASE,
         method: "GET",
@@ -373,17 +360,11 @@
             if (!row.Date) return;
             const normDate = normaliseDate(row.Date);
             if (!normDate) return;
-            sessions.push({
-            _id:      row._id,
-            date:     normDate,
-            duration: row.Duration || "2hr",
-            cost:     costFor(row.Duration || "2hr")
-            });
+            const dur = row.Duration || "2hr";
+            sessions.push({ _id: row._id, date: normDate, duration: dur, cost: costFor(dur) });
         });
 
-        // Sort chronologically
         sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
-
         updateUI();
         }).fail(function() {
         alert("Failed to load data from DB.");
@@ -394,26 +375,44 @@
         selectedDuration = d;
         $("#btn2hr").toggleClass("active", d === '2hr');
         $("#btn1hr").toggleClass("active", d === '1hr');
+        $("#btnCancelled").toggleClass("active", d === 'cancelled');
         validateDuplicateDate();
+        }
+
+        // ─── Build list HTML ──────────────────────────────────────────────────────
+        function buildList(list) {
+        return list.map((s, i) => {
+            let durationClass, durationLabel;
+            if (s.duration === '2hr')       { durationClass = 'two-hr';    durationLabel = '2 Hours'; }
+            else if (s.duration === '1hr')  { durationClass = 'one-hr';    durationLabel = '1 Hour';  }
+            else                            { durationClass = 'cancelled'; durationLabel = 'Cancelled'; }
+
+            const costClass  = s.cost < 0 ? 'li-cost deduction' : 'li-cost';
+            const costLabel  = s.cost < 0 ? `-₹${Math.abs(s.cost)}` : `₹${s.cost}`;
+
+            return `<li>
+            <span class="li-index">#${i + 1}</span>
+            <span class="li-date">${formatDisplay(s.date)}</span>
+            <span class="li-duration ${durationClass}">${durationLabel}</span>
+            <span class="${costClass}">${costLabel}</span>
+            </li>`;
+        }).join('');
         }
 
         // ─── UI Update ───────────────────────────────────────────────────────────
         function updateUI() {
-        // ── Split sessions at the point OLD_TARGET was met ───────────────────
+        // Split at OLD_TARGET — cancelled entries count (reduce the running total)
         let runningOld = 0, splitIndex = -1;
         for (let i = 0; i < sessions.length; i++) {
             runningOld += sessions[i].cost;
             if (runningOld >= OLD_TARGET) { splitIndex = i; break; }
         }
 
-        // oldSessions: up to and including the session that met OLD_TARGET
-        // newSessions: everything after that
         const oldSessions = splitIndex >= 0 ? sessions.slice(0, splitIndex + 1) : sessions.slice();
         const newSessions = splitIndex >= 0 ? sessions.slice(splitIndex + 1) : [];
 
-        // ── Stats based on newSessions toward TARGET_AMOUNT ──────────────────
         const totalCollected  = newSessions.reduce((sum, s) => sum + s.cost, 0);
-        const totalHours      = newSessions.reduce((sum, s) => sum + (s.duration === '2hr' ? 2 : 1), 0);
+        const totalHours      = newSessions.reduce((sum, s) => s.duration === 'cancelled' ? sum : sum + (s.duration === '2hr' ? 2 : 1), 0);
         const progressPercent = TARGET_AMOUNT > 0 ? Math.min((totalCollected / TARGET_AMOUNT) * 100, 100) : 0;
         const surplus         = totalCollected - TARGET_AMOUNT;
 
@@ -423,42 +422,21 @@
         $("#progress-fill").css("width", progressPercent + "%");
 
         const surplusEl = $("#surplusAmount");
-        if (surplus >= 0) {
-            surplusEl.text("+" + surplus).css("color", "var(--success)");
-        } else {
-            surplusEl.text(surplus).css("color", "var(--danger)");
-        }
+        surplusEl.text((surplus >= 0 ? "+" : "") + surplus)
+                 .css("color", surplus >= 0 ? "var(--success)" : "var(--danger)");
 
-        // ── Check if new target met — if so, merge new into old ──────────────
-        let newTargetMetIndex = -1;
-        let runningNew = 0;
+        // Check if new target met
+        let newTargetMetIndex = -1, runningNew = 0;
         for (let i = 0; i < newSessions.length; i++) {
             runningNew += newSessions[i].cost;
             if (runningNew >= TARGET_AMOUNT) { newTargetMetIndex = i; break; }
         }
 
-        // Sessions shown in "View History": new sessions (or merged if new target met)
-        const currentSessions = newTargetMetIndex >= 0 ? [] : newSessions;
-        // Sessions shown in "View Old History": old sessions + merged new if new target met
-        const historicSessions = newTargetMetIndex >= 0
-            ? [...oldSessions, ...newSessions]
-            : oldSessions;
+        const currentSessions  = newTargetMetIndex >= 0 ? [] : newSessions;
+        const historicSessions = newTargetMetIndex >= 0 ? [...oldSessions, ...newSessions] : oldSessions;
 
-        // ── Buttons ──────────────────────────────────────────────────────────
         $("#viewDatesBtn").prop("disabled", currentSessions.length === 0);
         $("#viewOldDatesBtn").prop("disabled", historicSessions.length === 0);
-
-        // ── Current history list ─────────────────────────────────────────────
-        const buildList = (list, startIndex = 0) => list.map((s, i) => {
-            const durationClass = s.duration === '2hr' ? 'two-hr' : 'one-hr';
-            const durationLabel = s.duration === '2hr' ? '2 Hours' : '1 Hour';
-            return `<li>
-            <span class="li-index">#${startIndex + i + 1}</span>
-            <span class="li-date">${formatDisplay(s.date)}</span>
-            <span class="li-duration ${durationClass}">${durationLabel}</span>
-            <span class="li-cost">₹${s.cost}</span>
-            </li>`;
-        }).join('');
 
         const currentHTML = buildList(currentSessions);
         $("#datesList").html(`<ul>${currentHTML || '<li style="justify-content:center;color:#94a3b8;">No new sessions yet</li>'}</ul>`);
@@ -466,9 +444,7 @@
         const oldHTML = buildList(historicSessions);
         $("#oldDatesList").html(`<ul>${oldHTML || '<li style="justify-content:center;color:#94a3b8;">No history yet</li>'}</ul>`);
 
-        // ── Target-met note ──────────────────────────────────────────────────
         computeTargetMetDate(newSessions, newTargetMetIndex);
-
         validateDuplicateDate();
         }
 
@@ -479,7 +455,7 @@
             <div class="target-met-note">
                 🎯 New target of ₹${TARGET_AMOUNT} was met on
                 <strong>${formatDisplay(s.date)}</strong>
-                &nbsp;(${s.duration === '2hr' ? '2-hour' : '1-hour'} session)
+                &nbsp;(${s.duration === '2hr' ? '2-hour' : s.duration === '1hr' ? '1-hour' : 'cancelled'} session)
             </div>`);
         } else {
             $("#targetMetNote").html('');
@@ -495,20 +471,16 @@
         if (!selectedDate) return alert("Select a date");
 
         const [y, m, d] = selectedDate.split("-");
-        const formattedDate = `${d}-${m}-${y}`;       // dd-mm-yyyy for display/dedup
-        const isoDate       = `${y}-${m}-${d}`;        // yyyy-mm-dd for DB storage
+        const formattedDate = `${d}-${m}-${y}`;
+        const isoDate       = `${y}-${m}-${d}`;
 
         if (sessions.some(s => s.date === formattedDate)) return;
 
         const $btn = $(this).prop("disabled", true).text("Saving...");
-
         const payload = { Date: isoDate, Duration: selectedDuration, id: Date.now() };
 
-        // Show debug panel with outgoing request
         const debugEl = $("#debugPanel").show();
-        debugEl.text("→ POST " + API_BASE + "\n" +
-            "Headers: " + JSON.stringify({ "x-apikey": HEADERS["x-apikey"], "content-type": HEADERS["content-type"] }, null, 2) + "\n" +
-            "Body: " + JSON.stringify(payload, null, 2) + "\n\nWaiting for response...");
+        debugEl.text("→ POST " + API_BASE + "\nBody: " + JSON.stringify(payload) + "\n\nWaiting...");
 
         fetch(API_BASE, {
             method: "POST",
@@ -520,22 +492,11 @@
             let parsed;
             try { parsed = JSON.parse(text); } catch(e) { parsed = text; }
 
-            debugEl.text("→ POST " + API_BASE + "\n" +
-            "Body sent: " + JSON.stringify(payload) + "\n\n" +
-            "← Status: " + res.status + " " + res.statusText + "\n" +
-            "Response: " + JSON.stringify(parsed, null, 2));
+            debugEl.text("← Status: " + res.status + " " + res.statusText + "\nResponse: " + JSON.stringify(parsed, null, 2));
 
-            if (!res.ok) {
-            $btn.prop("disabled", false).text("Add Date");
-            return;
-            }
+            if (!res.ok) { $btn.prop("disabled", false).text("Add Date"); return; }
 
-            sessions.push({
-            _id:      parsed._id,
-            date:     formattedDate,
-            duration: selectedDuration,
-            cost:     costFor(selectedDuration)
-            });
+            sessions.push({ _id: parsed._id, date: formattedDate, duration: selectedDuration, cost: costFor(selectedDuration) });
             sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
             updateUI();
             $btn.prop("disabled", false).text("Add Date");
@@ -549,12 +510,12 @@
         // ─── View History ────────────────────────────────────────────────────────
         $("#viewDatesBtn").click(function () {
         $("#datesList").slideToggle();
-        $("#oldDatesList").slideUp(); // close old if open
+        $("#oldDatesList").slideUp();
         });
 
         $("#viewOldDatesBtn").click(function () {
         $("#oldDatesList").slideToggle();
-        $("#datesList").slideUp(); // close new if open
+        $("#datesList").slideUp();
         });
 
         // ─── Init ────────────────────────────────────────────────────────────────
@@ -565,7 +526,8 @@
         if (!val) return;
         const [y, m, d] = val.split("-");
         const formatted = `${d}-${m}-${y}`;
-        const isDup = sessions.some(s => s.date === formatted);
+        // Allow duplicate date for cancelled (different event on same day)
+        const isDup = selectedDuration !== 'cancelled' && sessions.some(s => s.date === formatted && s.duration !== 'cancelled');
 
         if (isDup) {
             $("#addDateBtn").prop("disabled", true).text("Already Recorded");
