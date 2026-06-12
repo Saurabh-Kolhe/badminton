@@ -252,7 +252,7 @@
             </div>
             <div class="stat-card">
             <span>Per Hour</span>
-            <strong>₹50</strong>
+            <strong>₹36</strong>
             </div>
             <div class="stat-card">
             <span>Surplus</span>
@@ -274,8 +274,8 @@
             <div class="top-row">
             <input type="date" id="newDate" />
             <div class="duration-toggle">
-                <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹100</button>
-                <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹50</button>
+                <button class="duration-btn active" id="btn2hr" type="button" onclick="setDuration('2hr')">2hr ₹72</button>
+                <button class="duration-btn" id="btn1hr" type="button" onclick="setDuration('1hr')">1hr ₹36</button>
                 <button class="duration-btn cancel-btn" id="btnCancelled" type="button" onclick="setDuration('cancelled')">❌ -₹22</button>
             </div>
             </div>
@@ -302,8 +302,8 @@
         let sessions         = [];
         let selectedDuration = '2hr';
 
-        const COST_2HR        =  100;
-        const COST_1HR        =  50;
+        const COST_2HR        =  72;
+        const COST_1HR        =  36;
         const COST_CANCELLED  = -22;   // deduction for cancellation
         const OLD_TARGET      = 1080;
         const TARGET_AMOUNT   = 1180;
