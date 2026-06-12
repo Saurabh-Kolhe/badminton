@@ -252,7 +252,7 @@
             </div>
             <div class="stat-card">
             <span>Per Hour</span>
-            <strong>₹36</strong>
+            <strong id="perHourRate">₹36</strong>
             </div>
             <div class="stat-card">
             <span>Surplus</span>
@@ -302,20 +302,30 @@
         let sessions         = [];
         let selectedDuration = '2hr';
 
-        const COST_2HR        =  72;
-        const COST_1HR        =  36;
-        const COST_CANCELLED  = -22;   // deduction for cancellation
+        const COST_CANCELLED  = -22;
         const OLD_TARGET      = 1080;
         const TARGET_AMOUNT   = 1180;
         const API_BASE = "https://badminton1-728f.restdb.io/rest/badminton-data";
         const HEADERS  = { "x-apikey": "69133b1c7f34ed2ba4200e07", "content-type": "application/json" };
 
+        // Rate change date: from 16-May-2026 onwards new rates apply
+        const RATE_CHANGE_DATE = new Date(2026, 4, 16); // month is 0-indexed
+
+        const RATES = {
+          old: { '1hr': 36,  '2hr': 72  },
+          new: { '1hr': 50,  '2hr': 100 }
+        };
+
         // ─── Helpers ─────────────────────────────────────────────────────────────
-        function costFor(duration) {
-        if (duration === '2hr')       return COST_2HR;
-        if (duration === '1hr')       return COST_1HR;
-        if (duration === 'cancelled') return COST_CANCELLED;
-        return COST_2HR;
+        function ratesFor(dateStr) {
+          // dateStr is "dd-mm-yyyy"
+          return parseDate(dateStr) >= RATE_CHANGE_DATE ? RATES.new : RATES.old;
+        }
+
+        function costFor(duration, dateStr) {
+          if (duration === 'cancelled') return COST_CANCELLED;
+          const r = ratesFor(dateStr);
+          return r[duration] ?? RATES.old[duration];
         }
 
         function parseDate(str) {
@@ -361,7 +371,7 @@
             const normDate = normaliseDate(row.Date);
             if (!normDate) return;
             const dur = row.Duration || "2hr";
-            sessions.push({ _id: row._id, date: normDate, duration: dur, cost: costFor(dur) });
+            sessions.push({ _id: row._id, date: normDate, duration: dur, cost: costFor(dur, normDate) });
         });
 
         sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
@@ -377,6 +387,18 @@
         $("#btn1hr").toggleClass("active", d === '1hr');
         $("#btnCancelled").toggleClass("active", d === 'cancelled');
         validateDuplicateDate();
+        }
+
+        // Update button labels and Per Hour card based on selected date's applicable rate
+        function updateRateLabels() {
+        const val = $("#newDate").val();
+        if (!val) return;
+        const [y, m, d] = val.split("-");
+        const dateStr = `${d}-${m}-${y}`;
+        const r = ratesFor(dateStr);
+        $("#btn2hr").text(`2hr ₹${r['2hr']}`);
+        $("#btn1hr").text(`1hr ₹${r['1hr']}`);
+        $("#perHourRate").text(`₹${r['1hr']}`);
         }
 
         // ─── Build list HTML ──────────────────────────────────────────────────────
@@ -496,7 +518,7 @@
 
             if (!res.ok) { $btn.prop("disabled", false).text("Add Date"); return; }
 
-            sessions.push({ _id: parsed._id, date: formattedDate, duration: selectedDuration, cost: costFor(selectedDuration) });
+            sessions.push({ _id: parsed._id, date: formattedDate, duration: selectedDuration, cost: costFor(selectedDuration, formattedDate) });
             sessions.sort((a, b) => parseDate(a.date) - parseDate(b.date));
             updateUI();
             $btn.prop("disabled", false).text("Add Date");
@@ -519,14 +541,17 @@
         });
 
         // ─── Init ────────────────────────────────────────────────────────────────
-        $(document).ready(() => $("#newDate").val(new Date().toISOString().split("T")[0]));
+        $(document).ready(() => {
+          $("#newDate").val(new Date().toISOString().split("T")[0]);
+          updateRateLabels();
+        });
 
         function validateDuplicateDate() {
         const val = $("#newDate").val();
         if (!val) return;
+        updateRateLabels();
         const [y, m, d] = val.split("-");
         const formatted = `${d}-${m}-${y}`;
-        // Allow duplicate date for cancelled (different event on same day)
         const isDup = selectedDuration !== 'cancelled' && sessions.some(s => s.date === formatted && s.duration !== 'cancelled');
 
         if (isDup) {
