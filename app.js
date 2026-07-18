@@ -27,7 +27,7 @@ const PREVIOUS_TARGET = 1080;
 const CURRENT_TARGET = 1180;
 
 // Fixed deduction applied when a session is cancelled.
-const CANCELLATION_DEDUCTION = -20;
+const CANCELLATION_DEDUCTION = -22;
 
 // Rate change cutoff: from this date onwards, new per-hour rates apply.
 // Month is 0-indexed (4 = May).
